@@ -27,6 +27,8 @@ Parsing `.xlsx` in JS with libraries like **SheetJS** often means:
 * ✅ **Memory stays flat, UI stays responsive**
 
 ---
+Test Your Self here >>>: ***[https://shyam20001.github.io/xlsx-lite/](https://shyam20001.github.io/xlsx-lite/)***
+---
 
 ## 🧪 Benchmarks (100 MB `.xlsx`, 4 sheets, Chromium, batch = 500)
 
@@ -63,7 +65,7 @@ const res = await xlsx_batch_async(bytes, sheets[0], 0, 500);
 console.log(res.rows); // first 500 rows
 ```
 
-👉 A responsive demo UI (`demo.html`) is included. Drag-drop a file, stream batches, watch ms timings.
+👉 A responsive demo UI (`index.html`) is included. Drag-drop a file, stream batches, watch ms timings.
 
 ---
 
@@ -74,10 +76,10 @@ console.log(res.rows); // first 500 rows
 
 ---
 
-## 👩‍💻 About
+## About
 
 Built for the **Web Dev Community** by [Shyam](https://github.com/Shyam20001)
-Repo: **[xlsx-lite](https://github.com/amudhas/xlsx-lite)**
+Repo: **[xlsx-lite](https://github.com/Shyam20001/xlsx-lite)**
 
 **Async, yield, streams enabled — no workers required.**
 Compared to **SheetJS**, which lacks streaming and freezes on big files.
