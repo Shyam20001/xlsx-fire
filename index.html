@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>XLSX WASM Streaming Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: #11151c;
+      --muted: #9aa4af;
+      --text: #e6edf3;
+      --accent: #6aa1ff;
+      --ok: #25c2a0;
+      --warn: #ffcc66;
+      --err: #ff6b6b;
+      --border: #202632;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+      background: #0d1117;
+    }
+    h1 { margin: 0; font-size: 16px; font-weight: 600; color: var(--accent); }
+    main {
+      flex: 1; padding: 18px;
+      display: grid; gap: 16px;
+      grid-template-columns: 320px 1fr;
+      align-items: start;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="file"], select, input[type="number"], button {
+      width: 100%; background: #0f141b; color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; outline: none; transition: border .15s ease, background .15s ease, transform .02s ease;
+    }
+    input[type="file"] { padding: 8px; }
+    select:disabled, input:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
+    button { cursor: pointer; font-weight: 600; }
+    button.primary { background: #122037; border-color: #22314a; }
+    button.primary:hover { border-color: #2c3e57; }
+    button.ok { background: #0f2a24; border-color: #1c4d40; }
+    button.warn { background: #2a2410; border-color: #4d411c; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row.buttons { grid-template-columns: 1fr 1fr; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .status { font-size: 12px; color: var(--muted); }
+    .status b { color: var(--text); }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;
+      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    thead th {
+      position: sticky; top: 0; background: #0f141b; border-bottom: 1px solid var(--border);
+      text-align: left; padding: 8px; font-weight: 600; color: #a7b0ba;
+    }
+    tbody td { padding: 6px 8px; border-bottom: 1px solid #141a22; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    tbody tr:nth-child(2n) td { background: #0e131a; }
+    .scroller { height: 60vh; min-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    .log-panel { padding: 18px; }
+    .log { height: 160px; min-height: 120px; overflow: auto; background: #0f141b; border: 1px dashed #253044; border-radius: 8px; padding: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+
+    /* —— Responsiveness —— */
+    @media (max-width: 1000px) {
+      main { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .row.buttons { grid-template-columns: 1fr 1fr; }
+      .scroller { height: 50vh; }
+      header h1 { font-size: 15px; }
+    }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .row.buttons { grid-template-columns: 1fr; }
+      .scroller { height: 46vh; }
+      input, select, button { font-size: 16px; } /* better tap targets */
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ XLSX via WASM (streaming entries, no workers)</h1>
+    <div class="status">
+      <span id="wasmStatus" class="pill">WASM: <b>loading…</b></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" aria-label="Controls">
+      <div class="label">XLSX file</div>
+      <input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+      <div class="hint">Large files OK. Nothing leaves the browser.</div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <div class="label">Sheets</div>
+          <select id="sheets" disabled></select>
+        </div>
+        <div>
+          <div class="label">Batch size (rows)</div>
+          <input type="number" id="batch" min="1" value="2048" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <div class="label">Offset (0-based)</div>
+          <input type="number" id="offset" min="0" value="0" />
+        </div>
+        <div>
+          <div class="label">&nbsp;</div>
+          <button id="btnList" class="primary" disabled>List sheets</button>
+        </div>
+      </div>
+
+      <div class="row buttons" style="margin-top:10px">
+        <button id="btnStart" class="ok" disabled>Fetch batch</button>
+        <button id="btnNext" class="warn" disabled>Next batch</button>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Data table">
+      <div class="row">
+        <div class="label">Table (<span id="rowRange">0–0</span>)</div>
+        <div class="label" style="text-align:right">Sheet: <span id="sheetName" class="pill">—</span></div>
+      </div>
+      <div class="scroller" role="region" aria-label="Rows">
+        <table>
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="log-panel" aria-label="Performance log">
+    <div class="label">Log</div>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script type="module">
+    import init, { list_sheets, xlsx_batch_async } from './pkg/sheetx.js';
+
+    const el = (id) => document.getElementById(id);
+    const $file = el('file');
+    const $sheets = el('sheets');
+    const $batch = el('batch');
+    const $offset = el('offset');
+    const $btnList = el('btnList');
+    const $btnStart = el('btnStart');
+    const $btnNext = el('btnNext');
+    const $thead = el('thead');
+    const $tbody = el('tbody');
+    const $rowRange = el('rowRange');
+    const $sheetName = el('sheetName');
+    const $log = el('log');
+    const $wasmStatus = el('wasmStatus');
+
+    let FILE_BYTES = null;
+    let NEXT_OFFSET = 0;
+    let DONE = true;
+    let ACTIVE_SHEET = '';
+
+    const log = (msg) => {
+      const t = new Date().toLocaleTimeString();
+      $log.textContent += `[${t}] ${msg}\n`;
+      $log.scrollTop = $log.scrollHeight;
+    };
+
+    const setUI = () => {
+      const hasFile = !!FILE_BYTES;
+      $btnList.disabled = !hasFile;
+      $btnStart.disabled = !hasFile || !$sheets.value;
+      $btnNext.disabled = DONE;
+      $sheets.disabled = !hasFile;
+    };
+
+    const renderRows = (rows, startRow) => {
+      const maxCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
+      if ($thead.children.length === 0 || $thead.children[0].children.length !== maxCols) {
+        $thead.innerHTML = '';
+        const tr = document.createElement('tr');
+        for (let c = 0; c < maxCols; c++) {
+          const th = document.createElement('th');
+          th.textContent = `C${c+1}`;
+          tr.appendChild(th);
+        }
+        $thead.appendChild(tr);
+      }
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < rows.length; i++) {
+        const tr = document.createElement('tr');
+        const row = rows[i];
+        for (let c = 0; c < Math.max(row.length, $thead.children[0].children.length); c++) {
+          const td = document.createElement('td');
+          const v = row[c];
+          td.title = v == null ? '' : v;
+          td.textContent = v == null ? '' : v;
+          tr.appendChild(td);
+        }
+        frag.appendChild(tr);
+      }
+      $tbody.appendChild(frag);
+      const endRow = startRow + rows.length - 1;
+      $rowRange.textContent = `${startRow}-${endRow}`;
+    };
+
+    async function initWasm() {
+      try {
+        await init();
+        $wasmStatus.innerHTML = 'WASM: <b>ready</b>';
+      } catch (e) {
+        $wasmStatus.innerHTML = 'WASM: <b style="color: var(--err)">error</b>';
+        log(`WASM init failed: ${e}`);
+        throw e;
+      }
+    }
+
+    function resetTable() {
+      $thead.innerHTML = '';
+      $tbody.innerHTML = '';
+      $rowRange.textContent = '0–0';
+    }
+
+    async function handleListSheets() {
+      if (!FILE_BYTES) return;
+      try {
+        const res = list_sheets(FILE_BYTES);
+        const names = res.sheets || [];
+        $sheets.innerHTML = '';
+        for (const name of names) {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          $sheets.appendChild(opt);
+        }
+        if (names.length) {
+          $sheets.value = names[0];
+          ACTIVE_SHEET = names[0];
+          $sheetName.textContent = ACTIVE_SHEET;
+          log(`Found ${names.length} sheet(s).`);
+        } else {
+          log('No sheets found.');
+        }
+        setUI();
+      } catch (e) {
+        log(`list_sheets error: ${e}`);
+      }
+    }
+
+    async function fetchBatch(offset) {
+      const sheet = $sheets.value;
+      const batchSize = Math.max(1, parseInt($batch.value || '1', 10));
+      try {
+        const t0 = performance.now();
+        const res = await xlsx_batch_async(FILE_BYTES, sheet, offset, batchSize);
+        const dt = (performance.now() - t0).toFixed(1);
+        const { sheet: sname, start_row, rows, next_offset, done } = res;
+        ACTIVE_SHEET = sname;
+        $sheetName.textContent = sname;
+        renderRows(rows, start_row);
+        NEXT_OFFSET = next_offset;
+        DONE = !!done;
+        $btnNext.disabled = DONE;
+        log(`Batch: +${rows.length} rows (start=${start_row}) | next=${next_offset} | done=${done} | ${dt} ms`);
+      } catch (e) {
+        log(`xlsx_batch_async error: ${e}`);
+      }
+    }
+
+    $file.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      log(`Loading file: ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`);
+      const ab = await f.arrayBuffer();
+      FILE_BYTES = new Uint8Array(ab);
+      resetTable();
+      DONE = true;
+      NEXT_OFFSET = 0;
+      setUI();
+    });
+
+    $btnList.addEventListener('click', handleListSheets);
+
+    $sheets.addEventListener('change', () => {
+      ACTIVE_SHEET = $sheets.value || '';
+      $sheetName.textContent = ACTIVE_SHEET || '—';
+      resetTable();
+      NEXT_OFFSET = Math.max(0, parseInt($offset.value || '0', 10));
+      DONE = false;
+      $btnNext.disabled = false;
+    });
+
+    $btnStart.addEventListener('click', async () => {
+      if (!FILE_BYTES) return;
+      resetTable();
+      DONE = false;
+      NEXT_OFFSET = Math.max(0, parseInt($offset.value || '0', 10));
+      await fetchBatch(NEXT_OFFSET);
+    });
+
+    $btnNext.addEventListener('click', async () => {
+      if (DONE) return;
+      await fetchBatch(NEXT_OFFSET);
+    });
+
+    await initWasm();
+    setUI();
+  </script>
+</body>
+</html>
