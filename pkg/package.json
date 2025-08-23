@@ -1,0 +1,18 @@
+{
+  "name": "sheetx",
+  "type": "module",
+  "collaborators": [
+    "Shyam20001 <mshayam41@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "sheetx_bg.wasm",
+    "sheetx.js",
+    "sheetx.d.ts"
+  ],
+  "main": "sheetx.js",
+  "types": "sheetx.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
