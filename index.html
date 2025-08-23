@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>XLSX WASM Streaming Demo</title>
+  <title>XLSX-LITE</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <style>
     :root {
@@ -88,7 +88,7 @@
 </head>
 <body>
   <header>
-    <h1>⚡ XLSX via WASM (streaming entries, no workers)</h1>
+    <h1>⚡ XLSX via WASM (streaming entries, no workers) + compiled using RUST❗</h1>
     <div class="status">
       <span id="wasmStatus" class="pill">WASM: <b>loading…</b></span>
     </div>
@@ -145,6 +145,13 @@
   <div class="log-panel" aria-label="Performance log">
     <div class="label">Log</div>
     <div id="log" class="log"></div>
+    <div style="margin-top:10px; font-size:13px; color:var(--muted);">
+      ▶️ - xlsx-lite - Check out the repo: 
+      <a href="https://github.com/Shyam20001/xlsx-lite" target="_blank" style="color:var(--accent); text-decoration:none;">
+        github.com/Shyam20001/xlsx-lite
+      </a><br/>
+      📦 Soon publishing <b>@xlsx-lite/react</b> and <b>@xlsx-lite/vue</b> for easy framework integration.
+    </div>
   </div>
 
   <script type="module">
