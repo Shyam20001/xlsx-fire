@@ -1,10 +1,8 @@
 {
-  "name": "sheetx",
+  "name": "xlsx-fire",
   "type": "module",
-  "collaborators": [
-    "Shyam20001 <mshayam41@gmail.com>"
-  ],
-  "version": "0.1.0",
+  "description": "Blazing fast Excel (.xlsx) parser powered by Rust + WebAssembly. Lightweight, works in React, Vue, and plain JS frontends.",
+  "version": "1.0.0",
   "files": [
     "sheetx_bg.wasm",
     "sheetx.js",
@@ -14,5 +12,30 @@
   "types": "sheetx.d.ts",
   "sideEffects": [
     "./snippets/*"
-  ]
+  ],
+  "keywords": [
+    "xlsx",
+    "excel",
+    "wasm",
+    "rust",
+    "parser",
+    "spreadsheet",
+    "webassembly",
+    "react",
+    "vue",
+    "javascript",
+    "chrome",
+    "browser",
+    "v8"
+  ],
+  "author": "Shyam20001 <mshayam41@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shyam20001/xlsx-fire.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Shyam20001/xlsx-fire/issues"
+  },
+  "homepage": "https://github.com/Shyam20001/xlsx-fire#readme"
 }
