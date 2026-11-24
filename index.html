@@ -1,9 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <title>XLSX-FIRE</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XLSX-FIRE - Rust WASM Streaming Parser</title>
+
   <style>
     :root {
       --bg: #0b0e14;
@@ -16,312 +18,1254 @@
       --err: #ff6b6b;
       --border: #202632;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      display: flex; flex-direction: column; min-height: 100vh;
+
+    * {
+      box-sizing: border-box;
     }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
     header {
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
-      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       background: #0d1117;
     }
-    h1 { margin: 0; font-size: 16px; font-weight: 600; color: var(--accent); }
+
+    h1 {
+      font-size: 18px;
+      margin: 0;
+      color: var(--accent);
+    }
+
     main {
-      flex: 1; padding: 18px;
-      display: grid; gap: 16px;
-      grid-template-columns: 320px 1fr;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 16px;
       align-items: start;
     }
-    .card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-    }
-    .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    input[type="file"], select, input[type="number"], button {
-      width: 100%; background: #0f141b; color: var(--text); border: 1px solid var(--border); border-radius: 10px;
-      padding: 10px 12px; outline: none; transition: border .15s ease, background .15s ease, transform .02s ease;
-    }
-    input[type="file"] { padding: 8px; }
-    select:disabled, input:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
-    button { cursor: pointer; font-weight: 600; }
-    button.primary { background: #122037; border-color: #22314a; }
-    button.primary:hover { border-color: #2c3e57; }
-    button.ok { background: #0f2a24; border-color: #1c4d40; }
-    button.warn { background: #2a2410; border-color: #4d411c; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .row.buttons { grid-template-columns: 1fr 1fr; }
-    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
-    .status { font-size: 12px; color: var(--muted); }
-    .status b { color: var(--text); }
-    table {
-      width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;
-      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-    }
-    thead th {
-      position: sticky; top: 0; background: #0f141b; border-bottom: 1px solid var(--border);
-      text-align: left; padding: 8px; font-weight: 600; color: #a7b0ba;
-    }
-    tbody td { padding: 6px 8px; border-bottom: 1px solid #141a22; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    tbody tr:nth-child(2n) td { background: #0e131a; }
-    .scroller { height: 60vh; min-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
-    .log-panel { padding: 18px; }
-    .log { height: 160px; min-height: 120px; overflow: auto; background: #0f141b; border: 1px dashed #253044; border-radius: 8px; padding: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
 
-    /* —— Responsiveness —— */
-    @media (max-width: 1000px) {
-      main { grid-template-columns: 1fr; }
-      .row { grid-template-columns: 1fr; }
-      .row.buttons { grid-template-columns: 1fr 1fr; }
-      .scroller { height: 50vh; }
-      header h1 { font-size: 15px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      min-width: 0;
     }
-    @media (max-width: 640px) {
-      header { flex-direction: column; align-items: flex-start; gap: 8px; }
-      .row.buttons { grid-template-columns: 1fr; }
-      .scroller { height: 46vh; }
-      input, select, button { font-size: 16px; } /* better tap targets */
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      background: #0f141b;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    button:disabled,
+    input:disabled,
+    select:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    button.primary {
+      background: #122037;
+    }
+
+    button.success {
+      background: #0f2a24;
+    }
+
+    button.warning {
+      background: #2a2410;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 9px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-ok {
+      color: var(--ok);
+    }
+
+    .status-error {
+      color: var(--err);
+    }
+
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      min-width: 0;
+    }
+
+    .scroller {
+      height: 55vh;
+      min-height: 300px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      table-layout: auto;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #151c27;
+      z-index: 1;
+      color: #a7b0ba;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #202632;
+      border-right: 1px solid #202632;
+      padding: 8px;
+      min-width: 90px;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    td:hover {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    tr:nth-child(even) td {
+      background: #0e131a;
+    }
+
+    .formula-table td {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-width: 500px;
+    }
+
+    .formula {
+      color: #91b9ff;
+      font-family: ui-monospace, monospace;
+    }
+
+    .log {
+      height: 145px;
+      overflow: auto;
+      background: #0f141b;
+      border: 1px dashed #253044;
+      border-radius: 9px;
+      padding: 10px;
+      font: 12px/1.6 ui-monospace, monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .metadata {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      background: #0f141b;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      min-width: 0;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 17px;
+      margin-top: 3px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    @media(max-width: 1000px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .scroller {
+        height: 48vh;
+      }
+    }
+
+    @media(max-width: 600px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metadata {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
+
 <body>
+
   <header>
-    <h1>⚡ XLSX via WASM (streaming entries, no workers) + compiled using RUST❗</h1>
-    <div class="status">
-      <span id="wasmStatus" class="pill">WASM: <b>loading…</b></span>
-    </div>
+    <h1>⚡ XLSX-FIRE — Rust / WebAssembly</h1>
+    <span id="wasmStatus" class="pill">WASM: Loading...</span>
   </header>
 
   <main>
-    <section class="card" aria-label="Controls">
-      <div class="label">XLSX file</div>
-      <input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-      <div class="hint">Large files OK. Nothing leaves the browser.</div>
 
-      <div class="row" style="margin-top:12px">
+    <!-- Controls -->
+    <section class="card controls">
+
+      <div>
+        <div class="label">Input file (CSV / XLSX)</div>
+        <input type="file" id="file"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <div class="hint">Files are processed locally in your browser.</div>
+      </div>
+
+      <div>
+        <div class="label">Parser</div>
+        <select id="parser">
+          <option value="session">Persistent streaming session</option>
+          <option value="oneshot">One-shot batch API</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="label">Worksheet</div>
+        <select id="sheets" disabled>
+          <option value="">Select a workbook first</option>
+        </select>
+        <button id="btnList" class="primary" disabled style="margin-top:8px">
+          List worksheets
+        </button>
+      </div>
+
+      <div>
+        <div class="label">Batch size</div>
+        <input id="batch" type="number" min="1" max="100000" value="2048" />
+      </div>
+
+      <div class="grid">
         <div>
-          <div class="label">Sheets</div>
-          <select id="sheets" disabled></select>
+          <div class="label">Starting offset</div>
+          <input id="offset" type="number" min="0" value="0" />
         </div>
+
         <div>
-          <div class="label">Batch size (rows)</div>
-          <input type="number" id="batch" min="1" value="2048" />
+          <div class="label">CSV delimiter</div>
+          <input id="delimiter" type="text" maxlength="1" value="," />
         </div>
       </div>
 
-      <div class="row" style="margin-top:10px">
-        <div>
-          <div class="label">Offset (0-based)</div>
-          <input type="number" id="offset" min="0" value="0" />
-        </div>
-        <div>
-          <div class="label">&nbsp;</div>
-          <button id="btnList" class="primary" disabled>List sheets</button>
-        </div>
+      <div class="hint">
+        CSV delimiter is a single ASCII character. Leave it as comma for normal CSV files.
       </div>
 
-      <div class="row buttons" style="margin-top:10px">
-        <button id="btnStart" class="ok" disabled>Fetch batch</button>
-        <button id="btnNext" class="warn" disabled>Next batch</button>
+      <div>
+        <button id="btnStart" class="success" disabled>
+          Fetch first batch
+        </button>
       </div>
+
+      <div>
+        <button id="btnNext" class="warning" disabled>
+          Fetch next batch
+        </button>
+      </div>
+
+      <div>
+        <button id="btnClose" disabled>
+          Close session
+        </button>
+      </div>
+
+      <div>
+        <button id="btnReset">
+          Reset table
+        </button>
+      </div>
+
+      <div class="hint">
+        Session mode preserves the parser between batches.
+        One-shot mode invokes the exported batch functions independently.
+      </div>
+
     </section>
 
-    <section class="card" aria-label="Data table">
-      <div class="row">
-        <div class="label">Table (<span id="rowRange">0–0</span>)</div>
-        <div class="label" style="text-align:right">Sheet: <span id="sheetName" class="pill">—</span></div>
+    <!-- Workspace -->
+    <section class="workspace">
+
+      <!-- Metrics -->
+      <div class="card">
+        <div class="section-title">Parsing statistics</div>
+
+        <div class="metadata">
+          <div class="metric">
+            <div class="label">Rows returned</div>
+            <strong id="metricRows">0</strong>
+          </div>
+
+          <div class="metric">
+            <div class="label">Next offset</div>
+            <strong id="metricOffset">0</strong>
+          </div>
+
+          <div class="metric">
+            <div class="label">Batch duration</div>
+            <strong id="metricTime">0 ms</strong>
+          </div>
+
+          <div class="metric">
+            <div class="label">Formulas</div>
+            <strong id="metricFormulas">0</strong>
+          </div>
+
+          <div class="metric">
+            <div class="label">File size</div>
+            <strong id="metricSize">0 MB</strong>
+          </div>
+
+          <div class="metric">
+            <div class="label">Completion</div>
+            <strong id="metricDone">Waiting</strong>
+          </div>
+        </div>
       </div>
-      <div class="scroller" role="region" aria-label="Rows">
-        <table>
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
+
+      <!-- Table -->
+      <div class="card">
+        <div class="section-title">
+          Parsed cells — <span id="sheetName">No file selected</span>
+          <span class="pill" id="rowRange">0–0</span>
+        </div>
+
+        <div class="scroller">
+          <table>
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Formula details -->
+      <div class="card">
+        <div class="section-title">
+          Formula cells in current batch
+        </div>
+
+        <div class="hint" style="margin-bottom:10px">
+          Formula expressions and cached values are displayed separately.
+          Cell references use physical Excel coordinates.
+        </div>
+
+        <div class="scroller" style="height:220px;min-height:150px">
+          <table class="formula-table">
+            <thead>
+              <tr>
+                <th>Cell</th>
+                <th>Formula</th>
+                <th>Cached value</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody id="formulaBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- XLSX metadata -->
+      <div class="card">
+        <div class="section-title">Worksheet metadata</div>
+        <div id="metadata" class="hint">No metadata available.</div>
+      </div>
+
+      <!-- Logs -->
+      <div class="card">
+        <div class="section-title">Execution log</div>
+        <div id="log" class="log"></div>
+      </div>
+
     </section>
   </main>
 
-  <div class="log-panel" aria-label="Performance log">
-    <div class="label">Log</div>
-    <div id="log" class="log"></div>
-    <div style="margin-top:10px; font-size:13px; color:var(--muted);">
-      ▶️ - xlsx-fire - Check out the repo: 
-      <a href="https://github.com/Shyam20001/xlsx-fire" target="_blank" style="color:var(--accent); text-decoration:none;">
-        github.com/Shyam20001/xlsx-fire
-      </a><br/>
-      <!-- 📦 Soon publishing <b>@xlsx-fire/react</b> and <b>@xlsx-fire/vue</b> for easy framework integration. -->
-    </div>
-  </div>
-
   <script type="module">
-    import init, { list_sheets, xlsx_batch_async } from './xlsx-fire/sheetx.js';
 
-    const el = (id) => document.getElementById(id);
-    const $file = el('file');
-    const $sheets = el('sheets');
-    const $batch = el('batch');
-    const $offset = el('offset');
-    const $btnList = el('btnList');
-    const $btnStart = el('btnStart');
-    const $btnNext = el('btnNext');
-    const $thead = el('thead');
-    const $tbody = el('tbody');
-    const $rowRange = el('rowRange');
-    const $sheetName = el('sheetName');
-    const $log = el('log');
-    const $wasmStatus = el('wasmStatus');
+    import init, {
+      list_sheets,
+      csv_batch_async,
+      xlsx_batch_async,
+      CsvSession,
+      XlsxSession
+    } from './pkg/sheetx.js';
+
+    const $ = id => document.getElementById(id);
+
+    const fileInput = $('file');
+    const parserInput = $('parser');
+    const sheetsInput = $('sheets');
+    const batchInput = $('batch');
+    const offsetInput = $('offset');
+    const delimiterInput = $('delimiter');
+
+    const btnList = $('btnList');
+    const btnStart = $('btnStart');
+    const btnNext = $('btnNext');
+    const btnClose = $('btnClose');
+    const btnReset = $('btnReset');
+
+    const thead = $('thead');
+    const tbody = $('tbody');
+    const formulaBody = $('formulaBody');
+
+    const logElement = $('log');
 
     let FILE_BYTES = null;
+    let FILE_TYPE = null;
+    let FILE_NAME = '';
+
+    let ACTIVE_SESSION = null;
+    let ACTIVE_SESSION_TYPE = null;
+
     let NEXT_OFFSET = 0;
     let DONE = true;
-    let ACTIVE_SHEET = '';
+    let BUSY = false;
 
-    const log = (msg) => {
-      const t = new Date().toLocaleTimeString();
-      $log.textContent += `[${t}] ${msg}\n`;
-      $log.scrollTop = $log.scrollHeight;
-    };
+    let GENERATION = 0;
+    let CURRENT_SHEET = '';
 
-    const setUI = () => {
+    // --------------------------------------------------
+    // Logging
+    // --------------------------------------------------
+
+    function log(message, level = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+
+      const line = document.createElement('div');
+
+      if (level === 'error') {
+        line.className = 'status-error';
+      } else if (level === 'success') {
+        line.className = 'status-ok';
+      }
+
+      line.textContent = `[${timestamp}] ${message}`;
+
+      logElement.appendChild(line);
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    // --------------------------------------------------
+    // Validation
+    // --------------------------------------------------
+
+    function getBatchSize() {
+      const value = Number(batchInput.value);
+
+      if (!Number.isSafeInteger(value) || value < 1 || value > 100000) {
+        throw new Error('Batch size must be between 1 and 100000.');
+      }
+
+      return value;
+    }
+
+    function getOffset() {
+      const value = Number(offsetInput.value);
+
+      if (!Number.isSafeInteger(value) || value < 0) {
+        throw new Error('Offset must be a non-negative safe integer.');
+      }
+
+      return value;
+    }
+
+    function getDelimiter() {
+      const value = delimiterInput.value;
+
+      if (value.length !== 1) {
+        throw new Error('CSV delimiter must contain exactly one character.');
+      }
+
+      const code = value.charCodeAt(0);
+
+      if (code > 127 || code === 10 || code === 13) {
+        throw new Error('CSV delimiter must be a single ASCII character other than CR/LF.');
+      }
+
+      return code;
+    }
+
+    function getSelectedSheet() {
+      if (FILE_TYPE !== 'xlsx') return '';
+
+      const sheet = sheetsInput.value;
+
+      if (!sheet) {
+        throw new Error('Select an XLSX worksheet first.');
+      }
+
+      return sheet;
+    }
+
+    // --------------------------------------------------
+    // Session management
+    // --------------------------------------------------
+
+    function closeSession() {
+      GENERATION++;
+
+      if (ACTIVE_SESSION) {
+        try {
+          ACTIVE_SESSION.close();
+        } catch (error) {
+          log(`Session cleanup warning: ${error}`, 'error');
+        }
+      }
+
+      ACTIVE_SESSION = null;
+      ACTIVE_SESSION_TYPE = null;
+      DONE = true;
+
+      updateUI();
+    }
+
+    function resetParserState() {
+      closeSession();
+
+      NEXT_OFFSET = 0;
+      offsetInput.value = '0';
+
+      resetTable();
+      resetMetrics();
+    }
+
+    // --------------------------------------------------
+    // UI
+    // --------------------------------------------------
+
+    function updateUI() {
       const hasFile = !!FILE_BYTES;
-      $btnList.disabled = !hasFile;
-      $btnStart.disabled = !hasFile || !$sheets.value;
-      $btnNext.disabled = DONE;
-      $sheets.disabled = !hasFile;
-    };
 
-    const renderRows = (rows, startRow) => {
-      const maxCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
-      if ($thead.children.length === 0 || $thead.children[0].children.length !== maxCols) {
-        $thead.innerHTML = '';
-        const tr = document.createElement('tr');
-        for (let c = 0; c < maxCols; c++) {
-          const th = document.createElement('th');
-          th.textContent = `C${c+1}`;
-          tr.appendChild(th);
-        }
-        $thead.appendChild(tr);
-      }
-      const frag = document.createDocumentFragment();
-      for (let i = 0; i < rows.length; i++) {
-        const tr = document.createElement('tr');
-        const row = rows[i];
-        for (let c = 0; c < Math.max(row.length, $thead.children[0].children.length); c++) {
-          const td = document.createElement('td');
-          const v = row[c];
-          td.title = v == null ? '' : v;
-          td.textContent = v == null ? '' : v;
-          tr.appendChild(td);
-        }
-        frag.appendChild(tr);
-      }
-      $tbody.appendChild(frag);
-      const endRow = startRow + rows.length - 1;
-      $rowRange.textContent = `${startRow}-${endRow}`;
-    };
+      btnList.disabled =
+        !hasFile || FILE_TYPE !== 'xlsx' || BUSY;
 
-    async function initWasm() {
-      try {
-        await init();
-        $wasmStatus.innerHTML = 'WASM: <b>ready</b>';
-      } catch (e) {
-        $wasmStatus.innerHTML = 'WASM: <b style="color: var(--err)">error</b>';
-        log(`WASM init failed: ${e}`);
-        throw e;
-      }
+      sheetsInput.disabled =
+        !hasFile || FILE_TYPE !== 'xlsx' || BUSY;
+
+      btnStart.disabled =
+        !hasFile ||
+        BUSY ||
+        (FILE_TYPE === 'xlsx' && !sheetsInput.value);
+
+      btnNext.disabled =
+        !hasFile || DONE || BUSY;
+
+      btnClose.disabled =
+        !ACTIVE_SESSION || BUSY;
+
+      fileInput.disabled = BUSY;
+      parserInput.disabled = BUSY;
     }
 
     function resetTable() {
-      $thead.innerHTML = '';
-      $tbody.innerHTML = '';
-      $rowRange.textContent = '0–0';
+      thead.replaceChildren();
+      tbody.replaceChildren();
+      formulaBody.replaceChildren();
+
+      $('rowRange').textContent = '0–0';
+      $('sheetName').textContent = CURRENT_SHEET || '—';
+      $('metadata').textContent = 'No metadata available.';
     }
 
-    async function handleListSheets() {
-      if (!FILE_BYTES) return;
-      try {
-        const res = list_sheets(FILE_BYTES);
-        const names = res.sheets || [];
-        $sheets.innerHTML = '';
-        for (const name of names) {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          $sheets.appendChild(opt);
+    function resetMetrics() {
+      $('metricRows').textContent = '0';
+      $('metricOffset').textContent = '0';
+      $('metricTime').textContent = '0 ms';
+      $('metricFormulas').textContent = '0';
+      $('metricDone').textContent = 'Waiting';
+    }
+
+    // --------------------------------------------------
+    // Table rendering
+    // --------------------------------------------------
+
+    function ensureHeaders(maxColumns) {
+      if (thead.children.length === maxColumns) return;
+
+      const row = document.createElement('tr');
+
+      for (let i = 0; i < maxColumns; i++) {
+        const th = document.createElement('th');
+        th.textContent = `Column ${i + 1}`;
+        row.appendChild(th);
+      }
+
+      thead.replaceChildren(row);
+    }
+
+    function renderRows(rows, startRow) {
+      if (!rows.length) return;
+
+      const maxColumns = rows.reduce(
+        (max, row) => Math.max(max, row.length),
+        0
+      );
+
+      if (maxColumns === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.textContent = '(Empty rows)';
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+      }
+
+      const currentColumns = thead.children[0]?.children.length || 0;
+
+      if (maxColumns > currentColumns) {
+        ensureHeaders(maxColumns);
+      }
+
+      const columnCount = Math.max(
+        maxColumns,
+        thead.children[0]?.children.length || 0
+      );
+
+      const fragment = document.createDocumentFragment();
+
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+
+        for (let column = 0; column < columnCount; column++) {
+          const td = document.createElement('td');
+
+          const value = row[column];
+
+          td.textContent = value == null ? '' : String(value);
+          td.title = value == null ? '' : String(value);
+
+          tr.appendChild(td);
         }
-        if (names.length) {
-          $sheets.value = names[0];
-          ACTIVE_SHEET = names[0];
-          $sheetName.textContent = ACTIVE_SHEET;
-          log(`Found ${names.length} sheet(s).`);
+
+        fragment.appendChild(tr);
+      }
+
+      tbody.appendChild(fragment);
+
+      const endRow = startRow + rows.length - 1;
+
+      const existingRange = $('rowRange').textContent;
+      const firstRow = existingRange === '0–0'
+        ? startRow
+        : Number(existingRange.split('–')[0]);
+
+      $('rowRange').textContent = `${firstRow}–${endRow}`;
+    }
+
+    // --------------------------------------------------
+    // Formula rendering
+    // --------------------------------------------------
+
+    function renderFormulas(formulas) {
+      formulaBody.replaceChildren();
+
+      $('metricFormulas').textContent = String(formulas.length);
+
+      if (!formulas.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+
+        td.colSpan = 4;
+        td.textContent = 'No formula cells in this batch.';
+
+        tr.appendChild(td);
+        formulaBody.appendChild(tr);
+
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      for (const formula of formulas) {
+        const tr = document.createElement('tr');
+
+        const values = [
+          formula.r ?? '',
+          formula.f ?? '',
+          formula.v ?? '',
+          formula.t ?? ''
+        ];
+
+        values.forEach((value, index) => {
+          const td = document.createElement('td');
+
+          td.textContent = String(value);
+
+          if (index === 1) {
+            td.className = 'formula';
+          }
+
+          if (index === 0) {
+            td.style.fontWeight = '600';
+          }
+
+          tr.appendChild(td);
+        });
+
+        fragment.appendChild(tr);
+      }
+
+      formulaBody.appendChild(fragment);
+    }
+
+    // --------------------------------------------------
+    // Metadata
+    // --------------------------------------------------
+
+    function renderMetadata(meta) {
+      if (!meta) {
+        $('metadata').textContent = 'No metadata available.';
+        return;
+      }
+
+      const container = document.createElement('div');
+
+      const items = [
+        ['Worksheet', meta.sheet],
+        ['Dimension', meta.dimension_ref ?? 'Unknown'],
+        ['Shared strings', meta.has_shared_strings ? 'Yes' : 'No'],
+        ['Date system', meta.date1904 ? '1904' : '1900'],
+        ['Maximum columns seen', meta.max_cols_seen],
+        ['Merged ranges', meta.merges?.length ?? 0]
+      ];
+
+      for (const [label, value] of items) {
+        const line = document.createElement('div');
+
+        line.style.marginBottom = '6px';
+
+        const strong = document.createElement('strong');
+        strong.textContent = `${label}: `;
+
+        line.append(strong, document.createTextNode(String(value)));
+
+        container.appendChild(line);
+      }
+
+      if (meta.merges?.length) {
+        const heading = document.createElement('div');
+        heading.style.marginTop = '10px';
+        heading.textContent = 'Merged ranges:';
+
+        container.appendChild(heading);
+
+        const list = document.createElement('div');
+
+        list.textContent = meta.merges
+          .map(merge =>
+            `${merge.r1},${merge.c1} → ${merge.r2},${merge.c2}`
+          )
+          .join(' | ');
+
+        container.appendChild(list);
+      }
+
+      $('metadata').replaceChildren(container);
+    }
+
+    // --------------------------------------------------
+    // WASM initialization
+    // --------------------------------------------------
+
+    async function initialize() {
+      try {
+        await init();
+
+        $('wasmStatus').textContent = 'WASM: Ready';
+        $('wasmStatus').classList.add('status-ok');
+
+        log('WebAssembly initialized successfully.', 'success');
+
+        updateUI();
+
+      } catch (error) {
+        $('wasmStatus').textContent = 'WASM: Initialization failed';
+        $('wasmStatus').classList.add('status-error');
+
+        log(`WASM initialization failed: ${error}`, 'error');
+
+        throw error;
+      }
+    }
+
+    // --------------------------------------------------
+    // File loading
+    // --------------------------------------------------
+
+    fileInput.addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+
+      if (!file || BUSY) return;
+
+      closeSession();
+
+      FILE_BYTES = null;
+      FILE_NAME = file.name;
+      FILE_TYPE = null;
+      CURRENT_SHEET = '';
+
+      resetTable();
+      resetMetrics();
+
+      BUSY = true;
+      updateUI();
+
+      try {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+
+        if (extension !== 'csv' && extension !== 'xlsx') {
+          throw new Error('Only CSV and XLSX files are supported.');
+        }
+
+        FILE_TYPE = extension;
+
+        log(`Loading ${file.name} (${(file.size / 1048576).toFixed(2)} MB)`);
+
+        const buffer = await file.arrayBuffer();
+
+        FILE_BYTES = new Uint8Array(buffer);
+
+        $('metricSize').textContent =
+          `${(FILE_BYTES.byteLength / 1048576).toFixed(2)} MB`;
+
+        log(`Loaded ${FILE_BYTES.byteLength.toLocaleString()} bytes.`, 'success');
+
+        sheetsInput.replaceChildren();
+
+        if (FILE_TYPE === 'xlsx') {
+          log('XLSX detected. Use List worksheets to inspect the workbook.');
         } else {
-          log('No sheets found.');
+          const option = document.createElement('option');
+          option.value = 'CSV';
+          option.textContent = 'CSV';
+          sheetsInput.appendChild(option);
+
+          CURRENT_SHEET = 'CSV';
+          $('sheetName').textContent = 'CSV';
+
+          log('CSV detected. Ready to parse.');
         }
-        setUI();
-      } catch (e) {
-        log(`list_sheets error: ${e}`);
-      }
-    }
 
-    async function fetchBatch(offset) {
-      const sheet = $sheets.value;
-      const batchSize = Math.max(1, parseInt($batch.value || '1', 10));
+      } catch (error) {
+        FILE_BYTES = null;
+        FILE_TYPE = null;
+
+        log(`File loading error: ${error}`, 'error');
+
+      } finally {
+        BUSY = false;
+        updateUI();
+      }
+    });
+
+    // --------------------------------------------------
+    // List XLSX worksheets
+    // --------------------------------------------------
+
+    btnList.addEventListener('click', () => {
+      if (!FILE_BYTES || FILE_TYPE !== 'xlsx' || BUSY) return;
+
+      BUSY = true;
+      updateUI();
+
       try {
-        const t0 = performance.now();
-        const res = await xlsx_batch_async(FILE_BYTES, sheet, offset, batchSize);
-        const dt = (performance.now() - t0).toFixed(1);
-        const { sheet: sname, start_row, rows, next_offset, done } = res;
-        ACTIVE_SHEET = sname;
-        $sheetName.textContent = sname;
-        renderRows(rows, start_row);
-        NEXT_OFFSET = next_offset;
-        DONE = !!done;
-        $btnNext.disabled = DONE;
-        log(`Batch: +${rows.length} rows (start=${start_row}) | next=${next_offset} | done=${done} | ${dt} ms`);
-      } catch (e) {
-        log(`xlsx_batch_async error: ${e}`);
+        closeSession();
+
+        const result = list_sheets(FILE_BYTES);
+        const names = result.sheets || [];
+
+        sheetsInput.replaceChildren();
+
+        for (const name of names) {
+          const option = document.createElement('option');
+
+          option.value = name;
+          option.textContent = name;
+
+          sheetsInput.appendChild(option);
+        }
+
+        if (names.length) {
+          CURRENT_SHEET = names[0];
+
+          sheetsInput.value = names[0];
+
+          $('sheetName').textContent = names[0];
+
+          log(`Found ${names.length} worksheet(s).`, 'success');
+
+        } else {
+          CURRENT_SHEET = '';
+
+          log('No worksheets found.', 'error');
+        }
+
+        resetParserState();
+
+      } catch (error) {
+        log(`list_sheets failed: ${error}`, 'error');
+
+      } finally {
+        BUSY = false;
+        updateUI();
+      }
+    });
+
+    // --------------------------------------------------
+    // Create persistent session
+    // --------------------------------------------------
+
+    function createSession(offset) {
+      closeSession();
+
+      if (FILE_TYPE === 'csv') {
+        ACTIVE_SESSION = new CsvSession(
+          FILE_BYTES,
+          offset,
+          getDelimiter()
+        );
+
+        ACTIVE_SESSION_TYPE = 'csv';
+
+        log(`Created persistent CSV session at offset ${offset}.`);
+
+      } else if (FILE_TYPE === 'xlsx') {
+        const sheet = getSelectedSheet();
+
+        ACTIVE_SESSION = new XlsxSession(
+          FILE_BYTES,
+          sheet,
+          offset
+        );
+
+        ACTIVE_SESSION_TYPE = 'xlsx';
+
+        log(`Created persistent XLSX session for "${sheet}" at offset ${offset}.`);
+      } else {
+        throw new Error('Unsupported parser type.');
       }
     }
 
-    $file.addEventListener('change', async (e) => {
-      const f = e.target.files?.[0];
-      if (!f) return;
-      log(`Loading file: ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`);
-      const ab = await f.arrayBuffer();
-      FILE_BYTES = new Uint8Array(ab);
-      resetTable();
-      DONE = true;
+    // --------------------------------------------------
+    // Execute parser
+    // --------------------------------------------------
+
+    async function executeBatch(createNewSession) {
+      if (!FILE_BYTES || BUSY) return;
+
+      BUSY = true;
+      updateUI();
+
+      let generation = GENERATION;
+
+      try {
+        const batchSize = getBatchSize();
+
+        const parserMode = parserInput.value;
+
+        if (FILE_TYPE === 'xlsx') {
+          CURRENT_SHEET = getSelectedSheet();
+        } else {
+          CURRENT_SHEET = 'CSV';
+        }
+
+        if (createNewSession) {
+          resetTable();
+          resetMetrics();
+
+          const offset = getOffset();
+
+          NEXT_OFFSET = offset;
+          DONE = false;
+
+          if (parserMode === 'session') {
+            createSession(offset);
+            generation = GENERATION;
+          } else {
+            closeSession();
+            generation = GENERATION;
+          }
+        }
+
+        if (!createNewSession && parserMode === 'session') {
+          if (!ACTIVE_SESSION) {
+            throw new Error('No active session. Fetch the first batch.');
+          }
+
+          if (ACTIVE_SESSION_TYPE !== FILE_TYPE) {
+            throw new Error('Session type does not match selected file.');
+          }
+        }
+
+        if (!createNewSession && DONE) {
+          return;
+        }
+
+        const startTime = performance.now();
+
+        let result;
+
+        if (parserMode === 'session') {
+
+          // Persistent APIs
+          result = await ACTIVE_SESSION.nextBatch(batchSize);
+
+        } else if (FILE_TYPE === 'csv') {
+
+          // One-shot CSV API
+          result = await csv_batch_async(
+            FILE_BYTES,
+            NEXT_OFFSET,
+            batchSize,
+            getDelimiter()
+          );
+
+        } else if (FILE_TYPE === 'xlsx') {
+
+          // One-shot XLSX API
+          result = await xlsx_batch_async(
+            FILE_BYTES,
+            CURRENT_SHEET,
+            NEXT_OFFSET,
+            batchSize
+          );
+
+        } else {
+          throw new Error('Unknown parser.');
+        }
+
+        const elapsed = performance.now() - startTime;
+
+        if (generation !== GENERATION) {
+          return;
+        }
+
+        if (!result || !Array.isArray(result.rows)) {
+          throw new Error('Invalid batch response from WASM.');
+        }
+
+        const rows = result.rows;
+        const formulas = result.formulas || [];
+
+        const startRow = result.start_row ?? (NEXT_OFFSET + 1);
+
+        renderRows(rows, startRow);
+        renderFormulas(formulas);
+
+        if (result.meta) {
+          renderMetadata(result.meta);
+        }
+
+        NEXT_OFFSET = result.next_offset;
+        DONE = !!result.done;
+
+        $('metricRows').textContent = rows.length.toLocaleString();
+
+        $('metricOffset').textContent =
+          NEXT_OFFSET.toLocaleString();
+
+        $('metricTime').textContent =
+          `${elapsed.toFixed(2)} ms`;
+
+        $('metricDone').textContent =
+          DONE ? 'Completed No More Rows!' : 'Processing';
+
+        $('sheetName').textContent =
+          result.sheet || CURRENT_SHEET;
+
+        log(
+          `${FILE_TYPE.toUpperCase()} batch | ` +
+          `Rows: ${rows.length} | ` +
+          `Start: ${startRow} | ` +
+          `Next: ${NEXT_OFFSET} | ` +
+          `Formulas: ${formulas.length} | ` +
+          `Time: ${elapsed.toFixed(2)} ms | ` +
+          `Done: ${DONE}`,
+          'success'
+        );
+
+        if (DONE) {
+          log(`Parsing completed. Final offset: ${NEXT_OFFSET}.`, 'success');
+        }
+
+      } catch (error) {
+        log(`Parser error: ${error}`, 'error');
+
+        // A failed session must be recreated before continuing.
+        if (parserInput.value === 'session') {
+          closeSession();
+        }
+
+        DONE = true;
+
+      } finally {
+        BUSY = false;
+        updateUI();
+      }
+    }
+
+    // --------------------------------------------------
+    // Event handlers
+    // --------------------------------------------------
+
+    btnStart.addEventListener('click', () => {
+      executeBatch(true);
+    });
+
+    btnNext.addEventListener('click', () => {
+      executeBatch(false);
+    });
+
+    btnClose.addEventListener('click', () => {
+      closeSession();
+
+      log('Parser session closed.');
+
+      updateUI();
+    });
+
+    btnReset.addEventListener('click', () => {
+      resetParserState();
+
+      log('Table and parser state reset.');
+    });
+
+    sheetsInput.addEventListener('change', () => {
+      if (BUSY) return;
+
+      CURRENT_SHEET = sheetsInput.value;
+
+      closeSession();
+
       NEXT_OFFSET = 0;
-      setUI();
-    });
+      DONE = true;
 
-    $btnList.addEventListener('click', handleListSheets);
-
-    $sheets.addEventListener('change', () => {
-      ACTIVE_SHEET = $sheets.value || '';
-      $sheetName.textContent = ACTIVE_SHEET || '—';
       resetTable();
-      NEXT_OFFSET = Math.max(0, parseInt($offset.value || '0', 10));
-      DONE = false;
-      $btnNext.disabled = false;
+      resetMetrics();
+
+      $('sheetName').textContent = CURRENT_SHEET || '—';
+
+      offsetInput.value = '0';
+
+      updateUI();
+
+      log(`Selected worksheet: ${CURRENT_SHEET}`);
     });
 
-    $btnStart.addEventListener('click', async () => {
-      if (!FILE_BYTES) return;
-      resetTable();
-      DONE = false;
-      NEXT_OFFSET = Math.max(0, parseInt($offset.value || '0', 10));
-      await fetchBatch(NEXT_OFFSET);
+    parserInput.addEventListener('change', () => {
+      if (BUSY) return;
+
+      closeSession();
+
+      NEXT_OFFSET = 0;
+      DONE = true;
+
+      offsetInput.value = '0';
+
+      updateUI();
+
+      log(`Parser mode changed to ${parserInput.value}.`);
     });
 
-    $btnNext.addEventListener('click', async () => {
-      if (DONE) return;
-      await fetchBatch(NEXT_OFFSET);
+    window.addEventListener('beforeunload', () => {
+      if (ACTIVE_SESSION) {
+        try {
+          ACTIVE_SESSION.close();
+        } catch (_) { }
+      }
     });
 
-    await initWasm();
-    setUI();
+    // --------------------------------------------------
+    // Start
+    // --------------------------------------------------
+
+    await initialize();
+
   </script>
+
 </body>
+
 </html>

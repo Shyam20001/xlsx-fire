@@ -2,7 +2,7 @@
   "name": "xlsx-fire",
   "type": "module",
   "description": "Blazing fast Excel (.xlsx) parser powered by Rust + WebAssembly. Lightweight, works in React, Vue, and plain JS frontends.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "files": [
     "sheetx_bg.wasm",
     "sheetx.js",
